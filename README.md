@@ -24,6 +24,14 @@ The goal of this project is to build a high intensive data streaming application
   # Frontend
   Open terminal and move into videostreamingreact folder. Do npm install. This will install all dependancies of the application. Then run the following command: npm start. This will start the frontend at localhost:3000/. Go to your browser and enter localhost:3000/. You will land on the following page:
   <p align="center">
-  <img src="Screenshot from 2020-04-16 10-29-36.png" alt="accessibility text">
+  <img src="Screenshot from 2020-04-16 10-29-36.png" width="350" alt="accessibility text">
   </p>
+  To test
+    1. Create an account. 
+    2. Create a channel. Allow webcam.
+    3. Open other tabs. On the home page you will see the created channel. Subscribe to the stream by clicking the channel.
+    4. On the tab you created the channel start streaming. You will see the video being shown on other tabs
+    
+ # Bugs
+  There is an error when a new subscriber connects after the streaming has already started. The video cannot be display. This will be fixed in future improvements. Or you can fix it if interested :D.
   
