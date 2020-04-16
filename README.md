@@ -23,4 +23,8 @@ The goal of this project is to build a high intensive data streaming application
   
   # Frontend
   Open terminal and move into videostreamingreact folder. Do npm install. This will install all dependancies of the application. Then run the following command: npm start. This will start the frontend at localhost:3000/. Go to your browser and enter localhost:3000/. You will land on the following page:
+  <p align="center">
+  <img src="Screenshot from 2020-04-16 10-29-36.png" width="350" title="hover text">
+  <img src="Screenshot from 2020-04-16 10-29-36.png" width="350" alt="accessibility text">
+  </p>
   
