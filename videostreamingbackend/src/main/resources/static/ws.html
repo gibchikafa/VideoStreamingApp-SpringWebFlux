@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Profile notification client
+    </title>
+</head>
+<body>
+<div class="events"></div>
+<p>
+    <button id="btnStart">START RECORDING</button>
+    <br/>
+    <button id="btnStop">STOP RECORDING</button>
+</p>
+
+<video controls></video>
+
+<video id="vid2" controls></video>
+<p id="demo"></p>
+
+<script>
+	var clientWebSocket = new WebSocket("ws://localhost:8080/streamer");
+	let chunks = [];
+    clientWebSocket.onopen = function() {
+        console.log("clientWebSocket.onopen", clientWebSocket);
+        console.log("clientWebSocket.readyState", "websocketstatus");
+    }
+    clientWebSocket.onclose = function(error) {
+        console.log("clientWebSocket.onclose", clientWebSocket, error);
+        events("Closing connection");
+    }
+    clientWebSocket.onerror = function(error) {
+        console.log("clientWebSocket.onerror", clientWebSocket, error);
+        events("An error occured");
+    }
+
+    clientWebSocket.onmessage = function(error) {
+        console.log("clientWebSocket.onmessage", clientWebSocket, error);
+        events(error.data);
+    }
+
+    function events(responseEvent) {
+       // document.querySelector(".events").innerHTML += responseEvent + "<br>";
+	}
+    
+    var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+    console.log(supportedConstraints);
+	
+	let constraintObj = { 
+            audio: false, 
+            video: { 
+                facingMode: "user", 
+                width: { min: 640, ideal: 640},
+                height: { min:400, ideal: 400} 
+            } 
+        }; 
+        // width: 1280, height: 720  -- preference only
+        // facingMode: {exact: "user"}
+        // facingMode: "environment"
+        
+        //handle older browsers that might implement getUserMedia in some way
+        if (navigator.mediaDevices === undefined) {
+            navigator.mediaDevices = {};
+            navigator.mediaDevices.getUserMedia = function(constraintObj) {
+                let getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                if (!getUserMedia) {
+                    return Promise.reject(new Error('getUserMedia is not implemented in this browser'));
+                }
+                return new Promise(function(resolve, reject) {
+                    getUserMedia.call(navigator, constraintObj, resolve, reject);
+                });
+            }
+        }else{
+            navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                devices.forEach(device=>{
+                    console.log(device.kind.toUpperCase(), device.label);
+                    //, device.deviceId
+                })
+            })
+            .catch(err=>{
+                console.log(err.name, err.message);
+            })
+        }
+
+        navigator.mediaDevices.getUserMedia(constraintObj)
+        .then(function(mediaStreamObj) {
+            //connect the media stream to the first video element
+            let video = document.querySelector('video');
+            if ("srcObject" in video) {
+                video.srcObject = mediaStreamObj;
+            } else {
+                //old version
+                video.src = window.URL.createObjectURL(mediaStreamObj);
+            }
+            
+            video.onloadedmetadata = function(ev) {
+                //show in the video element what is being captured by the webcam
+				video.play();
+            };
+            
+            //add listeners for saving video/audio
+            let start = document.getElementById('btnStart');
+            let stop = document.getElementById('btnStop');
+            let vidSave = document.getElementById('vid2');
+            let mediaRecorder = new MediaRecorder(mediaStreamObj);
+            
+            start.addEventListener('click', (ev)=>{
+                mediaRecorder.start(100);
+                console.log(mediaRecorder.state);
+			})
+			
+            stop.addEventListener('click', (ev)=>{
+                mediaRecorder.stop();
+                console.log(mediaRecorder.state);
+            });
+            
+            mediaRecorder.ondataavailable = function(ev){
+				sendDataToServer(ev.data);
+				chunks.push(ev.data);
+            }
+			
+            mediaRecorder.onstop = (ev)=>{
+				let blob = new Blob(chunks, {'type' : 'video/mp4;' });
+                chunks = [];
+                let videoURL = window.URL.createObjectURL(blob);
+                vidSave.src = videoURL;
+            }
+        })
+        .catch(function(err) { 
+            console.log(err.name, err.message); 
+		});
+		
+		function sendDataToServer(blobData){
+			if(blobData.size > 65536){
+				let blobChunks = sliceFile(blobData, 65000);
+				let i = 0;
+				while(i < blobChunks.length){
+					clientWebSocket.send(blobChunks[i]);
+					i++;
+				}
+			}
+			else if(blobData.size > 0){
+				clientWebSocket.send(blobData);
+			}
+		}
+
+		function sliceFile(blobData, chunksSize) {
+			var byteIndex = 0;
+			var blobChunks = [];
+			
+			while(byteIndex < blobData.size){
+				blobChunks.push(blobData.slice(byteIndex, byteIndex + chunksSize));
+				byteIndex += chunksSize;
+				
+			}
+			
+			return blobChunks;
+		}
+
+</script>
+</body>
+</html>

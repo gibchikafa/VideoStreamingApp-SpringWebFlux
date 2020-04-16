@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Profile notification client
+    </title>
+</head>
+<body>
+<video id="vid" controls autoplay></video>
+<button id="btnStop">STOP RECORDING</button>
+<div class="events"></div>
+
+<script>
+	var pageUrl = window.location.href;
+	var urlArray = pageUrl.split("?");
+	
+	var sourceBuffer = null;
+	var chunks = [];
+	
+	var videoDisplay = document.getElementById('vid');
+	if (window.MediaSource) {
+		var mediaSource = new MediaSource();
+		videoDisplay.src = URL.createObjectURL(mediaSource);
+		mediaSource.addEventListener('sourceopen', sourceOpen);
+	}
+	else{
+		alert("Media Source not Supported");
+	}
+	
+	function sourceOpen(e){
+		URL.revokeObjectURL(videoDisplay.src);
+		var mediaSource = e.target;
+		sourceBuffer = mediaSource.addSourceBuffer('video/webm;codecs=vp8');
+	}
+	
+	var clientWebSocket = new WebSocket("ws://localhost:8080/client/" + urlArray[urlArray.length - 1]);
+
+	function sourceBufferUpdate(){
+		if(sourceBuffer != null){
+			if(!sourceBuffer.updating){
+				if(chunks.length > 0){
+					
+					//var this_data = chunks.shift();
+					sourceBuffer.appendBuffer(chunks.shift());
+					//console.log(sourceBuffer);
+					
+					//console.log(chunks.shift());
+				}
+			}
+		}
+	}
+	
+    clientWebSocket.onopen = function() {
+        console.log("clientWebSocket.onopen", clientWebSocket);
+        console.log("clientWebSocket.readyState", "websocketstatus");
+    }
+    
+    clientWebSocket.onclose = function(error) {
+        console.log("clientWebSocket.onclose", clientWebSocket, error);
+    }
+    
+    clientWebSocket.onerror = function(error) {
+        console.log("clientWebSocket.onerror", clientWebSocket, error);
+        events("An error occured");
+    }
+
+    clientWebSocket.onmessage = function(message) {
+		//var blob = new Blob([message.data], {'type':'video/webm;codecs=vp8'});
+		console.log(message.data);
+		var fileReader = new FileReader();
+        fileReader.onload = function(event) {
+        	if(new Uint8Array(event.target.result).length > 0){
+        		chunks.push(new Uint8Array(event.target.result));
+        	}
+        };
+        fileReader.readAsArrayBuffer(message.data);
+	}
+	
+	function events(responseEvent) {
+       document.querySelector(".events").innerHTML += responseEvent + "<br>";
+	}
+	
+	
+	
+    
+	setInterval(sourceBufferUpdate, 500);
+
+	let stop = document.getElementById('btnStop');
+	
+	/*
+	stop.addEventListener('click', (ev)=>{
+		chunks = [].concat.apply([], chunks);
+		sourceBuffer.appendBuffer([].concat.apply([], chunks));
+	});*/
+</script>
+</body>
+</html>
